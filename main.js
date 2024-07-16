@@ -3,8 +3,7 @@ const BASE_URL = 'https://api.themoviedb.org/3';
 var sideBarButton = document.querySelector('.middle');
 var menu =document.querySelector('#menu');
 const menuList = document.querySelector('#menuList');
-
-
+const searchInput = document.getElementById('search');
 
 const options = ["Now Playing", "Popular", "Trending", "Upcoming", "Top Rated"];
 const endpoints = {
@@ -14,6 +13,8 @@ const endpoints = {
     upcoming: `${BASE_URL}/movie/upcoming?api_key=${API_KEY}`,
     topRated: `${BASE_URL}/movie/top_rated?api_key=${API_KEY}`
 };
+
+let noResultsFound = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     const sideBarButton = document.querySelector('.middle');
@@ -45,11 +46,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     fetchLatestMovies();
 
-    const searchInput = document.getElementById('search');
     searchInput.addEventListener('input', () => {
-        const query = searchInput.value;
+        const query = searchInput.value.trim(); // Trim whitespace from input
         if (query.length >= 3) {
             searchMovies(query);
+        } else {
+            fetchLatestMovies(); // Reset to display latest movies when input is empty
         }
     });
 
@@ -76,15 +78,20 @@ function getMovies(endpoint) {
         .then(data => displayMovies(data.results))
         .catch(error => console.error('Error fetching movies:', error));
 }
-getMovies(`https://api.themoviedb.org/3/movie/now_playing?api_key=${API_KEY}`);
+
+function fetchLatestMovies() {
+    getMovies(`${BASE_URL}/movie/now_playing?api_key=${API_KEY}`);
+}
 
 function displayMovies(movies) {
     const container = document.getElementById('movies-container');
     container.innerHTML = '';
     if (movies.length === 0) {
         document.getElementById('no-results-message').style.display = 'block';
+        noResultsFound = true;
     } else {
         document.getElementById('no-results-message').style.display = 'none';
+        noResultsFound = false;
         movies.forEach(movie => {
             fetchMovieDetails(movie.id);
         });
@@ -137,8 +144,18 @@ function hideMovieDetails(cardBody) {
 function searchMovies(query) {
     fetch(`${BASE_URL}/search/movie?api_key=${API_KEY}&query=${query}`)
         .then(response => response.json())
-        .then(data => displayMovies(data.results))
-        .catch(error => console.error('Error searching movies:', error));
+        .then(data => {
+            displayMovies(data.results);
+            if (data.results.length === 0) {
+                noResultsFound = true;
+            } else {
+                noResultsFound = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error searching movies:', error);
+            noResultsFound = true;
+        });
 }
 
 function validatePasswordMatch() {
@@ -153,3 +170,9 @@ function validatePasswordMatch() {
         validatePasswordInput.classList.remove('is-invalid');
     }
 }
+
+searchInput.addEventListener('keyup', (event) => {
+    if (event.key === 'Enter' && noResultsFound) {
+        document.getElementById('no-results-message').style.display = 'block';
+    }
+});
